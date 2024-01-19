@@ -10,7 +10,7 @@ import { vscDarkPlus as dark } from "react-syntax-highlighter/dist/esm/styles/pr
 import { convertFileToBase64 } from "@/lib/utils";
 
 interface ChatContentProps {
-  createChat: () => Promise<{ id: string }>;
+  createChat: () => Promise<{ id: string; error?: string }>;
   initalAssistantResponse?: string;
 }
 
@@ -33,6 +33,10 @@ const ChatContent: React.FC<ChatContentProps> = ({
     if (!currentChatId) {
       // create a new chat in the database
       const chat = await createChat();
+      if (chat.error) {
+        alert(chat.error);
+        return;
+      }
       currentChatId = chat.id;
       // and get the id and store it in state
       setChatId(chat.id);
@@ -67,7 +71,7 @@ const ChatContent: React.FC<ChatContentProps> = ({
       });
 
       if (!res.ok || !res.body) {
-        alert("Error sending message");
+        alert("Error sending message - maybe sign in?");
         return;
       }
       const reader = res.body?.getReader();

@@ -4,8 +4,9 @@ import { initialProgrammerMessages } from "./messages";
 
 import { db } from "@/db";
 import { chats } from "@/db/schema/chats";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { messages } from "@/db/schema/messages";
+import { getKindeServerSession } from "@kinde-oss/kinde-auth-nextjs/server";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -18,6 +19,12 @@ export const runtime = "edge";
 
 export async function POST(req: Request) {
   const { content, chatId } = await req.json();
+  const { getUser } = getKindeServerSession();
+  const user = await getUser();
+
+  if (!user) {
+    return new Response("not logged in", { status: 401 });
+  }
 
   // check if user logged in
   // mkae sure that chat belongs to them
@@ -25,7 +32,13 @@ export async function POST(req: Request) {
     return new Response("chatId is required", { status: 400 });
   }
 
-  const chat = await db.select().from(chats).where(eq(chats.id, chatId)).get();
+  //check the chat belongs to the currently logged in user
+
+  const chat = await db
+    .select()
+    .from(chats)
+    .where(and(eq(chats.id, chatId), eq(chats.userId, user.id))) //checks chat belongs to logged in user
+    .get();
 
   if (!chat) {
     return new Response("chat not found", { status: 404 });
@@ -34,6 +47,7 @@ export async function POST(req: Request) {
   // for this application, if just send in all user messages and last thing
   // the gpt responds with, you still get the same results
   // just need prompts from user and last thing gpt responded with
+  // TODO: ^^
   const allDBMessages = await db
     .select({
       role: messages.role,

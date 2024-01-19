@@ -1,14 +1,24 @@
+import { table } from "console";
 import { sql } from "drizzle-orm";
-import { sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, index } from "drizzle-orm/sqlite-core";
 
 // strings is what db sees
-export const chats = sqliteTable("chats", {
-  id: text("id").notNull().primaryKey(),
-  name: text("name").notNull(),
-  createdAt: text("created_at")
-    .default(sql`CURRENT_TIMESTAMP`)
-    .notNull(),
-});
+export const chats = sqliteTable(
+  "chats",
+  {
+    id: text("id").notNull().primaryKey(),
+    userId: text("user_id").notNull(),
+    name: text("name").notNull(),
+    createdAt: text("created_at")
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => {
+    return {
+      userIdIndex: index("chats_auth_user_id_idx").on(table.userId),
+    };
+  }
+);
 
 // id
 // name

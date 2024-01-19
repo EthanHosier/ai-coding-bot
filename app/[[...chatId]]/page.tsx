@@ -1,121 +1,43 @@
-"use client";
+import React, { Suspense } from "react";
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "@/components/ui/resizable";
+import Sidebar from "../_components/sidebar";
 
-import React, { useRef, useState } from "react";
-import ChatInput from "../_components/chat-input";
-import Markdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { vscDarkPlus as dark } from "react-syntax-highlighter/dist/esm/styles/prism";
+import ChatListSkeleton from "../_components/chatlist-skeleton";
+import ChatContentWrapper from "./_components/chat-content-wrapper";
+import ChatContent from "./_components/chat-content";
+import { createChat } from "./actions";
+import ChatPageSkeleton from "../_components/chatpage-skeleton";
 
-import { convertFileToBase64 } from "@/lib/utils";
-
-const ChatPage = ({ params }: { params: any }) => {
-  const [assistantResponse, setAssistantResonse] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-
-  const abortControllerRef = useRef<AbortController | null>(null);
-
-  const handleSubmit = async (value: string, file?: File) => {
-    setIsLoading(true);
-    setAssistantResonse("");
-
-    // upload file to somewhere like s3
-    // image url
-
-    let body = "";
-    if (file) {
-      const imageUrl = await convertFileToBase64(file);
-      const content = [
-        { type: "image_url", image_url: { url: imageUrl } },
-        { type: "text", text: value },
-      ];
-      body = JSON.stringify({ content });
-    } else {
-      body = JSON.stringify({ content: value });
-    }
-
-    //console.log("submit", value, file);
-
-    try {
-      abortControllerRef.current = new AbortController();
-      const res = await fetch("/api/message", {
-        method: "POST",
-        body,
-        headers: {
-          "Content-Type": "application/json",
-        },
-        signal: abortControllerRef.current.signal,
-      });
-
-      if (!res.ok || !res.body) {
-        alert("Error sending message");
-        return;
-      }
-      const reader = res.body?.getReader();
-
-      const decoder = new TextDecoder("utf-8");
-      let finalResult = "";
-      while (true) {
-        const { value, done } = await reader.read();
-
-        const text = decoder.decode(value);
-        setAssistantResonse((currentValue) => currentValue + text);
-
-        if (done) break;
-      }
-    } catch (err: any) {
-      if (err.name !== "AbortError") {
-        alert("Error sending message");
-      }
-    }
-    abortControllerRef.current = null;
-    setIsLoading(false);
-  };
-
-  const handleStop = () => {
-    setIsLoading(false);
-    if (!abortControllerRef.current) return;
-    abortControllerRef.current.abort();
-    abortControllerRef.current = null;
-  };
-
+const Page = ({ params }: { params: { chatId?: string } }) => {
+  const chatId = params.chatId?.[0];
   return (
-    <div className="h-screen overflow-y-auto">
-      <div className="max-w-4xl w-full mx-auto flex-1 px-10 py-5 overflow-x-hidden prose mb-12">
-        <Markdown
-          remarkPlugins={[remarkGfm]}
-          components={{
-            code(props) {
-              const { children, className, node, ...rest } = props;
-              const match = /language-(\w+)/.exec(className || "");
-              return match ? (
-                <SyntaxHighlighter
-                  {...rest}
-                  PreTag="div"
-                  children={String(children).replace(/\n$/, "")}
-                  language={match[1]}
-                  style={dark}
-                  wrapLines={true}
-                  wrapLongLines={true}
-                />
-              ) : (
-                <code {...rest} className={className}>
-                  {children}
-                </code>
-              );
-            },
-          }}
-        >
-          {assistantResponse}
-        </Markdown>
-      </div>
-      <ChatInput
-        onSubmit={handleSubmit}
-        isStreaming={isLoading}
-        onStop={handleStop}
-      />
-    </div>
+    <ResizablePanelGroup direction="horizontal" className="flex-1 h-full">
+      <ResizablePanel
+        className="h-screen"
+        defaultSize={20}
+        minSize={10}
+        maxSize={30}
+      >
+        <Suspense fallback={<ChatListSkeleton />}>
+          <Sidebar />
+        </Suspense>
+      </ResizablePanel>
+      <ResizableHandle withHandle />
+      <ResizablePanel defaultSize={80} className="relative">
+        {chatId ? (
+          <Suspense fallback={<ChatPageSkeleton />}>
+            <ChatContentWrapper chatId={chatId} />
+          </Suspense>
+        ) : (
+          <ChatContent createChat={createChat} />
+        )}
+      </ResizablePanel>
+    </ResizablePanelGroup>
   );
 };
 
-export default ChatPage;
+export default Page;

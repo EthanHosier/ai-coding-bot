@@ -3,47 +3,23 @@ import { Pencil } from "lucide-react";
 import Link from "next/link";
 import React from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { db } from "@/db";
+import { chats as chatsTable } from "@/db/schema/chats";
+import { unstable_cache as cache } from "next/cache";
 
-type chat = {
-  name: string;
-  url: string;
-  date: "Today" | "Yesterday" | string;
-};
+const getChats = cache(
+  async () =>
+    await db
+      .select({ id: chatsTable.id, name: chatsTable.name })
+      .from(chatsTable)
+      .all(),
+  ["get-chats-for-chat-list"],
+  { tags: ["get-chats-for-chat-list"] }
+);
 
-const CHATS: chat[] = [
-  {
-    name: "Chat 1",
-    url: "/chat1",
-    date: "Today",
-  },
-  {
-    name: "Chat 2",
-    url: "/chat2",
-    date: "Today",
-  },
-  {
-    name: "Chat 3",
-    url: "/chat3",
-    date: "Today",
-  },
-  {
-    name: "Chat 4",
-    url: "/chat4",
-    date: "Yesterday",
-  },
-  {
-    name: "Chat 5",
-    url: "/chat5",
-    date: "Yesterday",
-  },
-  {
-    name: "Chat 6",
-    url: "/chat6",
-    date: "Yesterday",
-  },
-];
+const Sidebar = async () => {
+  const chats = await getChats();
 
-const Sidebar = () => {
   return (
     <nav className="bg-black h-full flex-1 text-primary p-2">
       <Link href="/">
@@ -62,31 +38,16 @@ const Sidebar = () => {
         </Button>
       </Link>
 
-      <h3 className="text-sm font-medium text-secondary/60 ml-4 mt-6 mb-2">
-        Today
-      </h3>
-      {CHATS.filter((chat) => chat.date === "Today").map((chat, i) => (
+      {chats.map((chat) => (
         <Button
-          key={i}
+          key={chat.id}
           variant="nav"
           className="rounded-lg flex items-center justify-between"
           asChild
         >
-          <Link href={chat.url}>{chat.name}</Link>
-        </Button>
-      ))}
-
-      <h3 className="text-sm font-medium text-secondary/60 ml-4 mt-6 mb-2">
-        Yesterday
-      </h3>
-      {CHATS.filter((chat) => chat.date === "Yesterday").map((chat, i) => (
-        <Button
-          key={i}
-          variant="nav"
-          className="rounded-lg flex items-center justify-between"
-          asChild
-        >
-          <Link href={chat.url}>{chat.name}</Link>
+          <Link href={`/${chat.id}`} className="truncate">
+            {chat.name}
+          </Link>
         </Button>
       ))}
     </nav>

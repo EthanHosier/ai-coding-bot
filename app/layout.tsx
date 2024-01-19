@@ -40,8 +40,8 @@ export default function RootLayout({
             <Sidebar />
           </ResizablePanel>
           <ResizableHandle withHandle />
-          <ResizablePanel defaultSize={80}>
-            <div className="h-screen relative">{children}</div>
+          <ResizablePanel defaultSize={80} className="relative">
+            {children}
           </ResizablePanel>
         </ResizablePanelGroup>
       </body>
